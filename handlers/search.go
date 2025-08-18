@@ -6,11 +6,43 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
+	"github.com/david-galdamez/search-engine/database"
 	"github.com/david-galdamez/search-engine/utils"
 )
+
+type SearchedData map[string]int
+
+func SearchWordInDB(word []byte) SearchedData {
+
+	db, err := database.GetDB()
+	if err != nil {
+		log.Fatalf("Error opening database: %v\n", err)
+	}
+	defer db.Close()
+
+	tx, err := db.Begin(true)
+	if err != nil {
+		log.Fatalf("Error starting transaction: %v\n", err)
+	}
+	defer tx.Rollback()
+
+	termB := tx.Bucket([]byte("terms"))
+	termV := termB.Get(word)
+	if err != nil {
+		return nil
+	}
+
+	searchedData := make(SearchedData)
+
+	err = json.Unmarshal(termV, &searchedData)
+	if err != nil {
+		log.Fatalf("Error parsing json: %v\n", err)
+	}
+
+	return searchedData
+}
 
 func Search(w http.ResponseWriter, r *http.Request) {
 
@@ -24,20 +56,13 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	index := make(IndexedDocs)
-
 	done := make(chan error, 1)
+	searchedData := make(SearchedData)
 
 	go func() {
-		data, err := os.ReadFile("sample.json")
-		if err != nil {
-			done <- fmt.Errorf("Error reading json: %v", err)
-			return
-		}
-
-		err = json.Unmarshal(data, &index)
-		if err != nil {
-			done <- fmt.Errorf("Error decoding json: %v", err)
+		searchedData = SearchWordInDB([]byte(search))
+		if searchedData == nil {
+			done <- fmt.Errorf("Documents for word not found")
 			return
 		}
 
@@ -51,10 +76,10 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		return
 	case err := <-done:
 		if err != nil {
-			utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			utils.RespondWithError(w, http.StatusNotFound, err.Error())
 			return
 		}
 	}
 
-	utils.RespondWithJson(w, http.StatusOK, index[search])
+	utils.RespondWithJson(w, http.StatusOK, searchedData)
 }

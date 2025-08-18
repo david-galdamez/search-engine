@@ -1,3 +1,4 @@
 ./search-engine
 ./sample.json
+./search-engine.db
 ./tmp/
