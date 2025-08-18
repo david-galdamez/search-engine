@@ -2,47 +2,15 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/david-galdamez/search-engine/database"
+	"github.com/david-galdamez/search-engine/services"
 	"github.com/david-galdamez/search-engine/utils"
 )
-
-type SearchedData map[string]int
-
-func SearchWordInDB(word []byte) SearchedData {
-
-	db, err := database.GetDB()
-	if err != nil {
-		log.Fatalf("Error opening database: %v\n", err)
-	}
-	defer db.Close()
-
-	tx, err := db.Begin(true)
-	if err != nil {
-		log.Fatalf("Error starting transaction: %v\n", err)
-	}
-	defer tx.Rollback()
-
-	termB := tx.Bucket([]byte("terms"))
-	termV := termB.Get(word)
-	if err != nil {
-		return nil
-	}
-
-	searchedData := make(SearchedData)
-
-	err = json.Unmarshal(termV, &searchedData)
-	if err != nil {
-		log.Fatalf("Error parsing json: %v\n", err)
-	}
-
-	return searchedData
-}
 
 func Search(w http.ResponseWriter, r *http.Request) {
 
@@ -56,11 +24,17 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	db, err := database.GetDB()
+	if err != nil {
+		log.Fatalf("Error opening database: %v\n", err)
+	}
+	defer db.Close()
+
 	done := make(chan error, 1)
-	searchedData := make(SearchedData)
+	searchedData := make(services.SearchedData)
 
 	go func() {
-		searchedData = SearchWordInDB([]byte(search))
+		searchedData = services.SearchWordInDB([]byte(search), db)
 		if searchedData == nil {
 			done <- fmt.Errorf("Documents for word not found")
 			return
