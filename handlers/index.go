@@ -12,9 +12,10 @@ import (
 )
 
 type indexRequest struct {
-	Id   string `json:"id"`
-	Text string `json:"text,omitempty"`
-	Url  string `json:"url,omitempty"`
+	Id    string `json:"id"`
+	Title string `json:"title"`
+	Text  string `json:"text,omitempty"`
+	Url   string `json:"url,omitempty"`
 }
 
 func Index(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +43,15 @@ func Index(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			if val.Text != "" {
 				mux.Lock()
-				services.AddTextToDB(val.Id, val.Text, db)
+				services.AddTextToDB(val.Id, val.Title, val.Text, db)
+				doc := &services.Document{
+					Id:     val.Id,
+					Title:  val.Title,
+					Length: len(val.Text),
+					Text:   val.Text,
+				}
+				services.AddDoc(db, doc)
+				services.IncrementDocCounter(db)
 				mux.Unlock()
 			}
 		}(value)

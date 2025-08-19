@@ -18,6 +18,10 @@ func SearchWordInDB(word []byte, db *bolt.DB) SearchedData {
 	defer tx.Rollback()
 
 	termB := tx.Bucket([]byte("terms"))
+	if termB == nil {
+		log.Fatalf("Bucket does not exist\n")
+	}
+
 	termV := termB.Get(word)
 	if err != nil {
 		return nil

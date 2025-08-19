@@ -9,7 +9,7 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-func AddTextToDB(docId, text string, db *bolt.DB) {
+func AddTextToDB(docId, title, text string, db *bolt.DB) {
 	//trims punctuations and split by spaces
 	cleanText := strings.Map(func(r rune) rune {
 		if unicode.IsPunct(r) {
@@ -32,9 +32,16 @@ func AddTextToDB(docId, text string, db *bolt.DB) {
 		}
 
 		termB := tx.Bucket([]byte("terms"))
+		if termB == nil {
+			log.Fatalf("Bucket does not exist\n")
+		}
+
 		termV := termB.Get([]byte(word))
 		if termV == nil {
-			termB.Put([]byte(word), []byte("{}"))
+			err := termB.Put([]byte(word), []byte("{}"))
+			if err != nil {
+				log.Fatalf("Error adding into db: %v\n", err)
+			}
 		}
 		index := make(map[string]int)
 
@@ -49,7 +56,10 @@ func AddTextToDB(docId, text string, db *bolt.DB) {
 			log.Fatalf("Error parsing to json: %v\n", err)
 		}
 
-		termB.Put([]byte(word), data)
+		err = termB.Put([]byte(word), data)
+		if err != nil {
+			log.Fatalf("Error adding into db: %v\n", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
