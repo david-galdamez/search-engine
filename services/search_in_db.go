@@ -2,37 +2,34 @@ package services
 
 import (
 	"encoding/json"
-	"log"
+	"fmt"
 
 	"github.com/boltdb/bolt"
 )
 
 type SearchedData map[string]int
 
-func SearchWordInDB(word []byte, db *bolt.DB) SearchedData {
+func SearchWordInDB(word []byte, db *bolt.DB) (SearchedData, error) {
 
 	tx, err := db.Begin(true)
 	if err != nil {
-		log.Fatalf("Error starting transaction: %v\n", err)
+		return nil, err
 	}
 	defer tx.Rollback()
 
 	termB := tx.Bucket([]byte("terms"))
-	if termB == nil {
-		log.Fatalf("Bucket does not exist\n")
-	}
 
 	termV := termB.Get(word)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("word not found")
 	}
 
 	searchedData := make(SearchedData)
 
 	err = json.Unmarshal(termV, &searchedData)
 	if err != nil {
-		log.Fatalf("Error parsing json: %v\n", err)
+		return nil, err
 	}
 
-	return searchedData
+	return searchedData, err
 }

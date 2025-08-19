@@ -1,4 +1,4 @@
-./search-engine
-./sample.json
-./search-engine.db
-./tmp/
+search-engine
+sample.json
+search-engine.db
+tmp/

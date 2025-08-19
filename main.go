@@ -11,9 +11,10 @@ import (
 func main() {
 
 	router := http.NewServeMux()
-	router.HandleFunc("POST /index", handlers.Index)
 
+	router.HandleFunc("POST /index", handlers.Index)
 	router.HandleFunc("GET /search", handlers.Search)
+	router.HandleFunc("GET /docs/{id}", handlers.Docs)
 
 	router.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)

@@ -43,15 +43,30 @@ func Index(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			if val.Text != "" {
 				mux.Lock()
-				services.AddTextToDB(val.Id, val.Title, val.Text, db)
+				err := services.AddTextToDB(val.Id, val.Title, val.Text, db)
+				if err != nil {
+					utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+					return
+				}
+
 				doc := &services.Document{
 					Id:     val.Id,
 					Title:  val.Title,
 					Length: len(val.Text),
 					Text:   val.Text,
 				}
-				services.AddDoc(db, doc)
-				services.IncrementDocCounter(db)
+
+				err = services.AddDoc(db, doc)
+				if err != nil {
+					utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+					return
+				}
+
+				err = services.IncrementDocCounter(db)
+				if err != nil {
+					utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+					return
+				}
 				mux.Unlock()
 			}
 		}(value)

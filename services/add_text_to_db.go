@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 	"unicode"
@@ -9,7 +10,7 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-func AddTextToDB(docId, title, text string, db *bolt.DB) {
+func AddTextToDB(docId, title, text string, db *bolt.DB) error {
 	//trims punctuations and split by spaces
 	cleanText := strings.Map(func(r rune) rune {
 		if unicode.IsPunct(r) {
@@ -22,7 +23,7 @@ func AddTextToDB(docId, title, text string, db *bolt.DB) {
 
 	tx, err := db.Begin(true)
 	if err != nil {
-		log.Fatalf("Error starting transactions: %v\n", err)
+		return err
 	}
 	defer tx.Rollback()
 
@@ -33,36 +34,39 @@ func AddTextToDB(docId, title, text string, db *bolt.DB) {
 
 		termB := tx.Bucket([]byte("terms"))
 		if termB == nil {
-			log.Fatalf("Bucket does not exist\n")
+			return fmt.Errorf("bucket terms does not exist")
 		}
 
 		termV := termB.Get([]byte(word))
 		if termV == nil {
 			err := termB.Put([]byte(word), []byte("{}"))
 			if err != nil {
-				log.Fatalf("Error adding into db: %v\n", err)
+				return err
 			}
 		}
 		index := make(map[string]int)
 
 		err := json.Unmarshal(termB.Get([]byte(word)), &index)
 		if err != nil {
-			log.Fatalf("Error parsing json: %v\n", err)
+			return err
 		}
 		index[docId]++
 
 		data, err := json.Marshal(index)
 		if err != nil {
-			log.Fatalf("Error parsing to json: %v\n", err)
+			return err
 		}
 
 		err = termB.Put([]byte(word), data)
 		if err != nil {
-			log.Fatalf("Error adding into db: %v\n", err)
+			return err
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		log.Fatalf("Error commiting: %v\n", err)
+		return err
 	}
+	log.Printf("Document with id: %v successfully added\n", docId)
+
+	return nil
 }

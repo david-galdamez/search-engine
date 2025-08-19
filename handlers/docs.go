@@ -11,17 +11,10 @@ import (
 	"github.com/david-galdamez/search-engine/utils"
 )
 
-func Search(w http.ResponseWriter, r *http.Request) {
+func Docs(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
-
-	search := r.URL.Query().Get("q")
-	if search == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Query parameter missing")
-		return
-	}
-	defer r.Body.Close()
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -29,11 +22,13 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
+	docId := r.PathValue("id")
+
 	done := make(chan error, 1)
-	searchedData := make(services.SearchedData)
+	document := &services.Document{}
 
 	go func() {
-		searchedData, err = services.SearchWordInDB([]byte(search), db)
+		document, err = services.GetDoc([]byte(docId), db)
 		if err != nil {
 			done <- err
 			return
@@ -49,10 +44,10 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		return
 	case err := <-done:
 		if err != nil {
-			utils.RespondWithError(w, http.StatusNotFound, err.Error())
+			utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	}
 
-	utils.RespondWithJson(w, http.StatusOK, searchedData)
+	utils.RespondWithJson(w, http.StatusOK, *document)
 }
