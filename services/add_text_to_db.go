@@ -4,22 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
-	"unicode"
 
 	"github.com/boltdb/bolt"
+	"github.com/david-galdamez/search-engine/utils"
 )
 
 func AddTextToDB(docId, title, text string, db *bolt.DB) error {
-	//trims punctuations and split by spaces
-	cleanText := strings.Map(func(r rune) rune {
-		if unicode.IsPunct(r) {
-			return -1
-		}
-		return r
-	}, text)
 
-	wordsIterator := strings.FieldsSeq(strings.ToLower(cleanText))
+	wordsIterator := utils.Tokenizer(text)
 
 	tx, err := db.Begin(true)
 	if err != nil {

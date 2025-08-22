@@ -5,16 +5,23 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/david-galdamez/search-engine/database"
 	"github.com/david-galdamez/search-engine/handlers"
 )
 
 func main() {
+
+	err := database.CreateBuckets()
+	if err != nil {
+		log.Fatalf("error creating buckets")
+	}
 
 	router := http.NewServeMux()
 
 	router.HandleFunc("POST /index", handlers.Index)
 	router.HandleFunc("GET /search", handlers.Search)
 	router.HandleFunc("GET /docs/{id}", handlers.Docs)
+	router.HandleFunc("GET /counter", handlers.Counter)
 
 	router.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
@@ -26,9 +33,9 @@ func main() {
 		Handler: router,
 	}
 
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil {
-		log.Fatalf("Error listening to server: %v\n", err)
+		log.Fatalf("error listening to server: %v\n", err)
 	}
 
 	fmt.Print("Server listening on port: 8080")

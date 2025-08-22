@@ -7,29 +7,28 @@ import (
 	"time"
 
 	"github.com/david-galdamez/search-engine/database"
-	"github.com/david-galdamez/search-engine/models"
 	"github.com/david-galdamez/search-engine/services"
 	"github.com/david-galdamez/search-engine/utils"
 )
 
-func Docs(w http.ResponseWriter, r *http.Request) {
+type CounterResponse struct {
+	Counter int `json:"docs_counter"`
+}
 
+func Counter(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	db, err := database.GetDB()
 	if err != nil {
-		log.Fatalf("Error opening database: %v\n", err)
+		log.Fatalf("Error opening database")
 	}
-	defer db.Close()
-
-	docId := r.PathValue("id")
 
 	done := make(chan error, 1)
-	document := &models.Document{}
+	var counter *int
 
 	go func() {
-		document, err = services.GetDoc([]byte(docId), db)
+		counter, err = services.GetDocumentCounter(db)
 		if err != nil {
 			done <- err
 			return
@@ -40,8 +39,8 @@ func Docs(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case <-ctx.Done():
-		log.Print("Response timeout")
-		utils.RespondWithError(w, http.StatusRequestTimeout, "Response timeout")
+		log.Println("Request timeout")
+		utils.RespondWithError(w, http.StatusRequestTimeout, "request timeout")
 		return
 	case err := <-done:
 		if err != nil {
@@ -50,5 +49,5 @@ func Docs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	utils.RespondWithJson(w, http.StatusOK, *document)
+	utils.RespondWithJson(w, http.StatusOK, CounterResponse{Counter: *counter})
 }

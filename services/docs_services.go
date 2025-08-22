@@ -5,17 +5,10 @@ import (
 	"fmt"
 
 	"github.com/boltdb/bolt"
+	"github.com/david-galdamez/search-engine/models"
 )
 
-type Document struct {
-	Id     string  `json:"id"`
-	Title  string  `json:"title"`
-	Length int     `json:"length"`
-	Text   string  `json:"content"`
-	Url    *string `json:"url,omitempty"`
-}
-
-func AddDoc(db *bolt.DB, doc *Document) error {
+func AddDoc(db *bolt.DB, doc *models.Document) error {
 	tx, err := db.Begin(true)
 	if err != nil {
 		return err
@@ -48,9 +41,9 @@ func AddDoc(db *bolt.DB, doc *Document) error {
 	return nil
 }
 
-func GetDoc(docId []byte, db *bolt.DB) (*Document, error) {
+func GetDoc(docId []byte, db *bolt.DB) (*models.Document, error) {
 
-	doc := Document{}
+	doc := models.Document{}
 
 	err := db.View(func(tx *bolt.Tx) error {
 		docB := tx.Bucket([]byte("docs"))

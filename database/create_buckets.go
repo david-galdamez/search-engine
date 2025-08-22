@@ -6,7 +6,7 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-func CreateBuckets() {
+func CreateBuckets() error {
 	db, err := GetDB()
 	if err != nil {
 		log.Fatalf("Error opening database: %v\n", err)
@@ -37,4 +37,6 @@ func CreateBuckets() {
 
 		return nil
 	})
+
+	return err
 }
