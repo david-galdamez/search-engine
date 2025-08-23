@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/david-galdamez/search-engine/database"
+	"github.com/david-galdamez/search-engine/models"
 	"github.com/david-galdamez/search-engine/services"
 	"github.com/david-galdamez/search-engine/utils"
 )
@@ -30,7 +31,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 
 	done := make(chan error, 1)
-	searchedData := make(services.SearchedData)
+	searchedData := &models.Terms{}
 
 	go func() {
 		searchedData, err = services.SearchWordInDB([]byte(search), db)

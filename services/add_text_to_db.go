@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/boltdb/bolt"
+	"github.com/david-galdamez/search-engine/models"
 	"github.com/david-galdamez/search-engine/utils"
 )
 
@@ -36,13 +37,14 @@ func AddTextToDB(docId, title, text string, db *bolt.DB) error {
 				return err
 			}
 		}
-		index := make(map[string]int)
+		index := models.Terms{}
 
 		err := json.Unmarshal(termB.Get([]byte(word)), &index)
 		if err != nil {
 			return err
 		}
-		index[docId]++
+		index.Docs[docId]++
+		index.DF = len(index.Docs)
 
 		data, err := json.Marshal(index)
 		if err != nil {

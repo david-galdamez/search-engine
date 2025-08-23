@@ -6,3 +6,8 @@ type IndexRequest struct {
 	Text  string `json:"text,omitempty"`
 	Url   string `json:"url,omitempty"`
 }
+
+type Terms struct {
+	DF   int           `json:"df"`
+	Docs DocsFrequency `json:"docs"`
+}
