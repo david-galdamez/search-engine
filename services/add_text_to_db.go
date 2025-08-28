@@ -31,18 +31,20 @@ func AddTextToDB(docId, title, text string, db *bolt.DB) error {
 		}
 
 		termV := termB.Get([]byte(word))
+		var index models.Terms
 		if termV == nil {
-			err := termB.Put([]byte(word), []byte("{}"))
+			index = models.Terms{DF: 0, Docs: make(models.DocsFrequency)}
+		} else {
+			err := json.Unmarshal(termB.Get([]byte(word)), &index)
 			if err != nil {
 				return err
 			}
-		}
-		index := models.Terms{}
 
-		err := json.Unmarshal(termB.Get([]byte(word)), &index)
-		if err != nil {
-			return err
+			if index.Docs == nil {
+				index.Docs = make(models.DocsFrequency)
+			}
 		}
+
 		index.Docs[docId]++
 		index.DF = len(index.Docs)
 

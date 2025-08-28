@@ -16,7 +16,6 @@ import (
 
 func Index(w http.ResponseWriter, r *http.Request) {
 
-	var mux sync.RWMutex
 	var wg sync.WaitGroup
 	request := []models.IndexRequest{}
 
@@ -33,81 +32,70 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	for _, value := range request {
+	errors := make(chan error, len(request))
+
+	for _, val := range request {
 		wg.Add(1)
 		go func(val models.IndexRequest) {
 			defer wg.Done()
 			if val.Text != "" {
-				err := InsertOrReplaceText(db, val, &mux)
-				if err != nil {
-					utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
-					return
+				if err := InsertOrReplaceText(db, val); err != nil {
+					errors <- err
 				}
 			}
-		}(value)
+		}(val)
 	}
-	wg.Wait()
+
+	go func() {
+		wg.Wait()
+		close(errors)
+	}()
+
+	for err := range errors {
+		if err != nil {
+			utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
 
 	utils.RespondWithJson(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func InsertOrReplaceText(db *bolt.DB, val models.IndexRequest, mux *sync.RWMutex) error {
+func InsertOrReplaceText(db *bolt.DB, val models.IndexRequest) error {
 	document, err := services.GetDoc([]byte(val.Id), db)
-	if err != nil {
-		if document == nil && strings.Contains(err.Error(), "not found") {
-			mux.Lock()
-
-			newDoc := &models.Document{
-				Id:      val.Id,
-				Title:   val.Title,
-				Length:  len(val.Text),
-				Content: val.Text,
-			}
-
-			err := services.AddDoc(db, newDoc)
-			if err != nil {
-				return err
-			}
-
-			err = services.AddTextToDB(val.Id, val.Title, val.Text, db)
-			if err != nil {
-				return err
-			}
-
-			err = services.IncrementDocCounter(db)
-			if err != nil {
-				return err
-			}
-			mux.Unlock()
-
-			return nil
-		}
+	if err != nil && !(document == nil && strings.Contains(err.Error(), "not found")) {
 		return err
 	}
 
+	newDoc := &models.Document{
+		Id:      val.Id,
+		Title:   val.Title,
+		Length:  len(val.Text),
+		Content: val.Text,
+	}
+
 	if document != nil {
-		mux.Lock()
 		err := services.DeleteDocTerms(db, document)
 		if err != nil {
 			return err
 		}
+	}
 
-		newDoc := &models.Document{
-			Id:      val.Id,
-			Title:   val.Title,
-			Length:  len(val.Text),
-			Content: val.Text,
-		}
-		err = services.AddDoc(db, newDoc)
+	err = services.AddDoc(db, newDoc)
+	if err != nil {
+		return err
+	}
+
+	err = services.AddTextToDB(newDoc.Id, newDoc.Title, newDoc.Content, db)
+	if err != nil {
+		return err
+	}
+
+	if document == nil {
+		err = services.IncrementDocCounter(db)
 		if err != nil {
 			return err
 		}
-
-		err = services.AddTextToDB(val.Id, val.Text, val.Title, db)
-		if err != nil {
-			return err
-		}
-		mux.Unlock()
 	}
 
 	return nil
