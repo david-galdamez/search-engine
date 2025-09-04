@@ -30,9 +30,12 @@ func CreateBuckets() error {
 			return err
 		}
 
-		err = b.Put([]byte("N"), []byte("0"))
-		if err != nil {
-			return err
+		counter := b.Get([]byte("N"))
+		if counter == nil {
+			err = b.Put([]byte("N"), []byte("0"))
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil

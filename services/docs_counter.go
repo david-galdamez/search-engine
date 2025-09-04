@@ -20,15 +20,15 @@ func IncrementDocCounter(db *bolt.DB) error {
 	}
 
 	metaV := metaB.Get([]byte("N"))
-	var counter uint64
+	var counter int64
 
-	counter, err = strconv.ParseUint(string(metaV), 10, 64)
+	counter, err = strconv.ParseInt(string(metaV), 10, 64)
 	if err != nil {
 		return err
 	}
 	counter++
 
-	err = metaB.Put([]byte("N"), []byte(strconv.FormatUint(counter, 10)))
+	err = metaB.Put([]byte("N"), []byte(strconv.FormatInt(counter, 10)))
 	if err != nil {
 		return err
 	}

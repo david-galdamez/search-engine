@@ -33,11 +33,10 @@ func main() {
 		Handler: router,
 	}
 
+	fmt.Print("Server listening on port: 8080\n")
 	err = server.ListenAndServe()
 	if err != nil {
 		log.Fatalf("error listening to server: %v\n", err)
 	}
-
-	fmt.Print("Server listening on port: 8080")
 
 }

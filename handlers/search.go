@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/david-galdamez/search-engine/database"
@@ -30,30 +32,72 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	done := make(chan error, 1)
-	searchedData := &models.Terms{}
+	var wg sync.WaitGroup
+	var mux sync.Mutex
+	searchedData := make(models.DocsScore)
+	words := utils.Tokenizer(search)
+	done := make(chan error, len(words))
+
+	for _, word := range words {
+		wg.Add(1)
+		go func(word string) {
+			defer wg.Done()
+			tdfIdf, err := services.SearchCalculate(db, []byte(word))
+			if err != nil {
+				done <- err
+				return
+			}
+			mux.Lock()
+			for docId, score := range tdfIdf {
+				searchedData[docId] += score
+			}
+			mux.Unlock()
+		}(word)
+	}
 
 	go func() {
-		searchedData, err = services.SearchWordInDB([]byte(search), db)
-		if err != nil {
-			done <- err
-			return
-		}
-
-		done <- nil
+		wg.Wait()
+		close(done)
 	}()
 
-	select {
-	case <-ctx.Done():
-		log.Print("Response timeout")
-		utils.RespondWithError(w, http.StatusRequestTimeout, "Response timeout")
-		return
-	case err := <-done:
-		if err != nil {
-			utils.RespondWithError(w, http.StatusNotFound, err.Error())
+	for {
+		select {
+		case <-ctx.Done():
+			log.Print("Response timeout")
+			utils.RespondWithError(w, http.StatusRequestTimeout, "Response timeout")
 			return
+		case err, ok := <-done:
+			if !ok {
+				goto BUILD_RESPONSE
+			}
+			if err != nil {
+				if strings.Contains(err.Error(), "not found") {
+					continue
+				}
+				utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
 		}
 	}
 
-	utils.RespondWithJson(w, http.StatusOK, searchedData)
+BUILD_RESPONSE:
+	searchedResponse := models.SearchResponse{Query: search, TotalResults: len(searchedData)}
+	results := []models.SearchResults{}
+	for docId, value := range searchedData {
+		doc, err := services.GetDoc([]byte(docId), db)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				continue
+			}
+			utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		newResult := models.SearchResults{DocId: doc.Id, Title: doc.Title, Score: value}
+		utils.PushAndSort(&results, newResult)
+	}
+
+	searchedResponse.Results = results
+
+	utils.RespondWithJson(w, http.StatusOK, searchedResponse)
 }

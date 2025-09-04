@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/david-galdamez/search-engine/database"
@@ -45,6 +46,10 @@ func Docs(w http.ResponseWriter, r *http.Request) {
 		return
 	case err := <-done:
 		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				utils.RespondWithError(w, http.StatusNotFound, err.Error())
+				return
+			}
 			utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}

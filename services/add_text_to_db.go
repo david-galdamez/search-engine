@@ -20,7 +20,7 @@ func AddTextToDB(docId, title, text string, db *bolt.DB) error {
 	}
 	defer tx.Rollback()
 
-	for word := range wordsIterator {
+	for _, word := range wordsIterator {
 		if len(word) <= 2 {
 			continue
 		}

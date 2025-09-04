@@ -21,7 +21,7 @@ func DeleteDocTerms(db *bolt.DB, doc *models.Document) error {
 
 	termB := tx.Bucket([]byte("terms"))
 
-	for word := range wordsIterator {
+	for _, word := range wordsIterator {
 		index := models.Terms{}
 
 		termV := termB.Get([]byte(word))
