@@ -3,7 +3,6 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/boltdb/bolt"
 	"github.com/david-galdamez/search-engine/models"
@@ -62,7 +61,6 @@ func AddTextToDB(docId, title, text string, db *bolt.DB) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	log.Printf("Document with id: %v successfully added\n", docId)
 
 	return nil
 }

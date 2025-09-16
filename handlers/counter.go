@@ -23,6 +23,7 @@ func Counter(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalf("Error opening database")
 	}
+	defer db.Close()
 
 	done := make(chan error, 1)
 	var counter *int

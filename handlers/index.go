@@ -43,6 +43,12 @@ func Index(w http.ResponseWriter, r *http.Request) {
 					errors <- err
 				}
 			}
+
+			if val.Url != "" {
+				if err := InsertOrReplacePage(db, val); err != nil {
+					errors <- err
+				}
+			}
 		}(val)
 	}
 
@@ -72,6 +78,53 @@ func InsertOrReplaceText(db *bolt.DB, val models.IndexRequest) error {
 		Title:   val.Title,
 		Length:  len(val.Text),
 		Content: val.Text,
+	}
+
+	if document != nil {
+		err := services.DeleteDocTerms(db, document)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = services.AddDoc(db, newDoc)
+	if err != nil {
+		return err
+	}
+
+	err = services.AddTextToDB(newDoc.Id, newDoc.Title, newDoc.Content, db)
+	if err != nil {
+		return err
+	}
+
+	if document == nil {
+		err = services.IncrementDocCounter(db)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func InsertOrReplacePage(db *bolt.DB, val models.IndexRequest) error {
+
+	document, err := services.GetDoc([]byte(val.Id), db)
+	if err != nil && !(document == nil && strings.Contains(err.Error(), "not found")) {
+		return err
+	}
+
+	scrapedText, err := services.ScrapePage(val.Url)
+	if err != nil {
+		return err
+	}
+
+	newDoc := &models.Document{
+		Id:      val.Id,
+		Title:   val.Title,
+		Content: scrapedText,
+		Length:  len(scrapedText),
+		Url:     &val.Url,
 	}
 
 	if document != nil {

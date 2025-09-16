@@ -41,7 +41,7 @@ func Docs(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case <-ctx.Done():
-		log.Print("Response timeout")
+		log.Println("Response timeout")
 		utils.RespondWithError(w, http.StatusRequestTimeout, "Response timeout")
 		return
 	case err := <-done:

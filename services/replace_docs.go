@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"log"
 
 	"github.com/boltdb/bolt"
 	"github.com/david-galdamez/search-engine/models"
@@ -26,7 +25,6 @@ func DeleteDocTerms(db *bolt.DB, doc *models.Document) error {
 
 		termV := termB.Get([]byte(word))
 		if termV == nil {
-			log.Printf("Palabra no encontrada en bucket: %q", word)
 			continue
 		}
 		err := json.Unmarshal(termV, &index)

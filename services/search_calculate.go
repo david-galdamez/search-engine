@@ -61,7 +61,6 @@ func SearchCalculate(db *bolt.DB, word []byte) (models.DocsScore, error) {
 
 		tf := float64(counter) / float64(doc.Length)
 		idf := math.Log((float64(docsCounter)+1)/(float64(wordSearch.DF)+1)) + 1.0
-		log.Printf("docId: %v ,tf: %v, idf: %v\n", docId, tf, idf)
 		docScore[docId] = (tf * idf)
 	}
 

@@ -4,14 +4,21 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/david-galdamez/search-engine/database"
 	"github.com/david-galdamez/search-engine/handlers"
+	"github.com/joho/godotenv"
 )
 
 func main() {
 
-	err := database.CreateBuckets()
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("error getting .env file: %v", err.Error())
+	}
+
+	err = database.CreateBuckets()
 	if err != nil {
 		log.Fatalf("error creating buckets")
 	}
@@ -28,8 +35,13 @@ func main() {
 		w.Write([]byte("Health Check"))
 	})
 
+	PORT := os.Getenv("PORT")
+	if PORT == "" {
+		log.Fatalf("PORT env not found")
+	}
+
 	server := http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + PORT,
 		Handler: router,
 	}
 
